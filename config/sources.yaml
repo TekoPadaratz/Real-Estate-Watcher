@@ -1,0 +1,203 @@
+sources:
+  - id: "markize"
+    name: "Imobiliária Markize"
+    base_url: "https://www.imobiliariamarkize.com.br"
+    enabled: true
+    strategy: "http"
+    platform_family: "universal_software"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://www.imobiliariamarkize.com.br/aluguel/imoveis/todas-as-cidades/todos-os-bairros/0-quartos/0-suite-ou-mais/0-vaga/0-banheiro-ou-mais/todos-os-condominios?pagina=1&valormaximo=0&valorminimo=0"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: true
+      requires_browser: false
+      supports_pagination: true
+    extraction_hints:
+      city_in_url: false
+      image_host_contains: ["cdn.imoview.com.br"]
+      url_patterns:
+        listing_contains: ["/aluguel/imoveis/"]
+        detail_contains: ["/imovel/", "/detalhe-imovel/"]
+
+  - id: "portal_do_sol"
+    name: "Portal do Sol Imóveis"
+    base_url: "https://www.portaldosolimoveis.com.br"
+    enabled: true
+    strategy: "browser"
+    platform_family: "imobzi"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://www.portaldosolimoveis.com.br/buscar?availability=rent&city=Santo+Ant%C3%B4nio+da+Platina&property_type=Casa&search_type=properties&show_map=false&order=most_relevant&direction=desc"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: false
+      requires_browser: true
+      supports_pagination: true
+    extraction_hints:
+      query_params:
+        availability: "rent"
+        city: "Santo Antônio da Platina"
+        property_type: "Casa"
+        search_type: "properties"
+        order: "most_relevant"
+        direction: "desc"
+        show_map: "false"
+
+  - id: "santa_rosa"
+    name: "Santa Rosa Imóveis"
+    base_url: "https://www.santarosaimoveis.com.br"
+    enabled: true
+    strategy: "http"
+    platform_family: "site_para_imobiliarias"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://www.santarosaimoveis.com.br/imovel/locacao/casa/santo-antonio-da-platina"
+      - "https://www.santarosaimoveis.com.br/buscar"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: true
+      requires_browser: false
+      supports_pagination: true
+    extraction_hints:
+      decode_fallbacks: ["utf-8", "latin1", "windows-1252"]
+      url_patterns:
+        listing_contains: ["/imovel/locacao/casa", "/imovel/locacao"]
+        search_contains: ["/buscar"]
+      pagination_param: "pag"
+
+  - id: "boberg_sap"
+    name: "Boberg Imóveis - SAP"
+    base_url: "https://sap.bobergimoveis.com.br"
+    enabled: true
+    strategy: "browser"
+    platform_family: "flexpro"
+    experimental: true
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://sap.bobergimoveis.com.br/"
+      - "https://sap.bobergimoveis.com.br/imovel/"
+      - "https://sap.bobergimoveis.com.br/imovel/alugar"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: "unknown"
+      requires_browser: true
+      supports_pagination: true
+    extraction_hints:
+      quarantine_until_validated: true
+      validation_rules:
+        must_contain_any:
+          - "Boberg"
+          - "Santo Antônio da Platina"
+        reject_if_contains_any:
+          - "Presidente Getúlio"
+          - "Imóveis Raimondi"
+          - "Eitor P. de Melo"
+
+  - id: "gandara_oliveira"
+    name: "Gândara & Oliveira Imóveis"
+    base_url: "https://www.gandaraeoliveiraimoveis.com.br"
+    enabled: true
+    strategy: "http"
+    platform_family: "site_para_imobiliarias"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://www.gandaraeoliveiraimoveis.com.br/imovel/locacao/casa/santo-antonio-da-platina"
+      - "https://www.gandaraeoliveiraimoveis.com.br/imovel/locacao/casa"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: true
+      requires_browser: false
+      supports_pagination: true
+    extraction_hints:
+      decode_fallbacks: ["utf-8", "latin1", "windows-1252"]
+      url_patterns:
+        listing_contains: ["/imovel/locacao/casa"]
+      pagination_param: "pag"
+
+  - id: "padilha_ferrari"
+    name: "Padilha e Ferrari"
+    base_url: "https://www.imoveispadilhaeferrari.com.br"
+    enabled: true
+    strategy: "browser"
+    platform_family: "imobzi"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://www.imoveispadilhaeferrari.com.br/buscar?availability=rent&city=Santo+Ant%C3%B4nio+da+Platina&property_type=Casa&search_type=properties&show_map=false&order=most_relevant&direction=desc"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: "partial"
+      requires_browser: true
+      supports_pagination: true
+    extraction_hints:
+      query_params:
+        availability: "rent"
+        city: "Santo Antônio da Platina"
+        property_type: "Casa"
+        search_type: "properties"
+        order: "most_relevant"
+        direction: "desc"
+        show_map: "false"
+
+  - id: "villani"
+    name: "Villani Imóveis"
+    base_url: "https://villaniimoveis.com"
+    enabled: true
+    strategy: "browser"
+    platform_family: "imoflow"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://villaniimoveis.com/imoveis/para-alugar"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: false
+      requires_browser: true
+      supports_pagination: true
+    extraction_hints:
+      url_patterns:
+        listing_contains: ["/imoveis/para-alugar"]
+        detail_contains: ["/imovel/"]
+
+  - id: "nalesso"
+    name: "Nalesso Imóveis"
+    base_url: "https://nalessoimoveis.com.br"
+    enabled: true
+    strategy: "http"
+    platform_family: "nalesso"
+    experimental: false
+    city_scope: ["Santo Antônio da Platina"]
+    seeds:
+      - "https://nalessoimoveis.com.br/busca/?status=locacao&type=residencial"
+    capabilities:
+      supports_listing_pages: true
+      supports_detail_pages: true
+      supports_server_side_html: true
+      requires_browser: false
+      supports_pagination: true
+      supports_feature_filters: true
+    extraction_hints:
+      query_params:
+        status: "locacao"
+        type: "residencial"
+      notable_features:
+        - "área gourmet"
+        - "churrasqueira"
+        - "closet"
+        - "cozinha planejada"
+        - "escritório"
+        - "piscina"
+        - "sacada"
+        - "suíte"

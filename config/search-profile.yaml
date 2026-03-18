@@ -1,0 +1,126 @@
+profile:
+  id: "sap-alto-padrao-locacao-casas"
+  name: "Santo Antônio da Platina - Casas de alto padrão para aluguel"
+
+location:
+  city: "Santo Antônio da Platina"
+  state: "PR"
+  country: "BR"
+
+transaction:
+  mode: "rent"
+
+property:
+  usage: "residential"
+  allowed_types:
+    - "casa"
+    - "sobrado"
+    - "casa de condomínio"
+    - "residência"
+    - "residencial"
+  reject_types:
+    - "apartamento"
+    - "kitnet"
+    - "quitinete"
+    - "sala comercial"
+    - "comercial"
+    - "terreno"
+    - "rural"
+    - "barracão"
+    - "galpão"
+
+hard_filters:
+  min_bedrooms: 3
+  min_suites: 1
+  min_parking_spaces: 2
+  min_price_brl: 2000
+  require_active_listing: true
+  reject_mixed_use: true
+
+text_rules:
+  positive_keywords:
+    - { term: "alto padrão", weight: 30 }
+    - { term: "luxo", weight: 20 }
+    - { term: "sofisticada", weight: 12 }
+    - { term: "moderna", weight: 12 }
+    - { term: "nova", weight: 14 }
+    - { term: "recém construída", weight: 18 }
+    - { term: "condomínio fechado", weight: 18 }
+    - { term: "planejados", weight: 10 }
+    - { term: "cozinha planejada", weight: 10 }
+    - { term: "closet", weight: 12 }
+    - { term: "área gourmet", weight: 14 }
+    - { term: "churrasqueira", weight: 8 }
+    - { term: "piscina", weight: 15 }
+    - { term: "escritório", weight: 8 }
+    - { term: "lavabo", weight: 6 }
+    - { term: "sacada", weight: 6 }
+    - { term: "aquecimento solar", weight: 10 }
+    - { term: "energia solar", weight: 10 }
+  negative_keywords:
+    - { term: "antiga", weight: -25 }
+    - { term: "simples", weight: -12 }
+    - { term: "fundos", weight: -20 }
+    - { term: "meia água", weight: -25 }
+    - { term: "para reformar", weight: -30 }
+    - { term: "necessita reforma", weight: -35 }
+    - { term: "quitinete", weight: -50 }
+    - { term: "kitnet", weight: -50 }
+    - { term: "comercial", weight: -20 }
+    - { term: "residencial/comercial", weight: -15 }
+
+feature_bonus:
+  pool: 12
+  gourmet_area: 10
+  closet: 8
+  office: 6
+  planned_kitchen: 6
+  condominium: 8
+  solar_heating: 6
+  air_conditioning: 4
+  large_lot: 6
+  built_area_over_180: 8
+  built_area_over_250: 12
+
+feature_penalty:
+  no_main_image: -10
+  missing_price: -20
+  missing_bedrooms: -20
+  missing_parking: -10
+  incomplete_description: -6
+
+decision:
+  min_score_to_notify: 70
+  min_score_to_store_candidate: 45
+  allow_manual_review_band:
+    from: 55
+    to: 69
+
+change_detection:
+  notify_on_new_listing: true
+  notify_on_price_drop: true
+  notify_on_price_drop_percent_gte: 5
+  notify_on_major_description_change: true
+  major_description_change_similarity_lt: 0.72
+
+dedupe:
+  mode: "per_source_v1"
+  fingerprint_fields:
+    - "source_id"
+    - "external_id"
+    - "canonical_url"
+    - "normalized_title"
+    - "normalized_neighborhood"
+    - "bedrooms"
+    - "suites"
+    - "parking_spaces"
+  cross_source_cluster_v2: false
+
+notification:
+  channel: "telegram"
+  include_main_photo: true
+  include_price: true
+  include_main_features: true
+  include_score: true
+  include_source_name: true
+  include_link: true
