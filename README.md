@@ -66,11 +66,18 @@ Env local:
 cp .env.example .env
 ```
 
-Build:
+Preparação do gerenciador de pacotes:
 
 ```bash
-npm install
-npm run build
+corepack enable
+corepack prepare pnpm@10.6.4 --activate
+```
+
+Instalação e build:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
 ```
 
 Execução local:
@@ -85,7 +92,7 @@ pnpm app healthcheck
 Smoke test ao vivo:
 
 ```bash
-ENABLE_LIVE_SMOKE=true npm test -- tests/smoke/live-sources.test.ts
+ENABLE_LIVE_SMOKE=true pnpm test -- tests/smoke/live-sources.test.ts
 ```
 
 ## Ubuntu 24.04
@@ -94,6 +101,7 @@ ENABLE_LIVE_SMOKE=true npm test -- tests/smoke/live-sources.test.ts
 
 - Ubuntu Server 24.04 LTS
 - Node.js 22+
+- Corepack disponível no Node instalado
 - acesso sudo/root
 - Telegram bot token e chat id
 
@@ -109,14 +117,20 @@ O script:
 
 - valida Ubuntu 24.04
 - valida Node 22+
+- valida `pnpm-lock.yaml`
 - habilita `corepack`
-- instala dependências
-- roda build
+- prepara `pnpm@10.6.4`
+- roda `pnpm install --frozen-lockfile`
+- roda `pnpm build`
 - instala Playwright + dependências Linux
 - cria usuário/grupo `realestate`
 - prepara `/opt`, `/etc`, `/var/lib` e `/var/cache`
 - instala o unit do `systemd`
 - executa `daemon-reload`
+
+Se `pnpm-lock.yaml` estiver ausente do checkout, o instalador aborta com erro claro para evitar deploy não reproduzível.
+
+O repositório também versiona a allowlist `pnpm.onlyBuiltDependencies` para garantir que `better-sqlite3` e `esbuild` possam executar seus builds durante `pnpm install`.
 
 ### Configuração do env
 
@@ -149,7 +163,7 @@ O schema SQLite é aplicado automaticamente na abertura do banco. Se quiser for�
 
 ```bash
 cd /opt/real-estate-watcher
-node dist/src/scripts/apply-migrations.js
+pnpm db:apply
 ```
 
 Características de produção:
@@ -167,14 +181,14 @@ Com o app já buildado:
 pnpm app install-browsers --with-deps
 ```
 
-O caminho dos browsers é controlado por `PLAYWRIGHT_BROWSERS_PATH`.
+O caminho dos browsers é controlado por `PLAYWRIGHT_BROWSERS_PATH`. O instalador Ubuntu já executa esse passo com o env de produção carregado para garantir instalação em `/var/lib/real-estate-watcher/pw-browsers`.
 
 ### Bootstrap inicial
 
 Execute uma vez antes de habilitar o serviço, ou defina `BOOTSTRAP_ON_START=true`.
 
 ```bash
-sudo -u realestate -- bash -lc 'cd /opt/real-estate-watcher && node dist/src/index.js bootstrap'
+sudo -u realestate -- bash -lc 'cd /opt/real-estate-watcher && pnpm app bootstrap'
 ```
 
 ### Healthcheck e pós-deploy
@@ -182,7 +196,7 @@ sudo -u realestate -- bash -lc 'cd /opt/real-estate-watcher && node dist/src/ind
 Healthcheck curto:
 
 ```bash
-sudo -u realestate -- bash -lc 'cd /opt/real-estate-watcher && node dist/src/index.js healthcheck'
+sudo -u realestate -- bash -lc 'cd /opt/real-estate-watcher && pnpm app healthcheck'
 ```
 
 Check completo pós-deploy:
@@ -293,8 +307,11 @@ SQLite:
 ## Testes
 
 ```bash
-npm run build
-npm test
+corepack enable
+corepack prepare pnpm@10.6.4 --activate
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
 ```
 
 Cobertura adicionada para:

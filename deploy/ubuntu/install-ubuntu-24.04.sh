@@ -13,39 +13,101 @@ SYSTEMD_UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 
+fail() {
+  echo "$1" >&2
+  exit 1
+}
+
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
-    echo "Este script precisa ser executado como root." >&2
-    exit 1
+    fail "Este script precisa ser executado como root."
   fi
 }
 
 validate_ubuntu_release() {
   if [[ ! -f /etc/os-release ]]; then
-    echo "/etc/os-release não encontrado." >&2
-    exit 1
+    fail "/etc/os-release não encontrado."
   fi
 
   . /etc/os-release
 
-  if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "24.04" ]]; then
-    echo "Este instalador suporta apenas Ubuntu 24.04 LTS." >&2
-    exit 1
+  local codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+  local id_like="${ID_LIKE:-}"
+  if [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "24.04" ]]; then
+    return
   fi
+
+  if [[ "${codename}" == "noble" && "${id_like}" == *"ubuntu"* ]]; then
+    return
+  fi
+
+  fail "Este instalador suporta Ubuntu 24.04 LTS ou derivadas compatíveis (noble)."
 }
 
 validate_node() {
   if ! command -v node >/dev/null 2>&1; then
-    echo "Node.js 22+ é obrigatório." >&2
-    exit 1
+    fail "Node.js 22+ é obrigatório."
   fi
 
   local node_major
   node_major="$(node -p "process.versions.node.split('.')[0]")"
   if (( node_major < 22 )); then
-    echo "Node.js 22+ é obrigatório. Versão atual: $(node -v)" >&2
-    exit 1
+    fail "Node.js 22+ é obrigatório. Versão atual: $(node -v)"
   fi
+}
+
+validate_corepack() {
+  if ! command -v corepack >/dev/null 2>&1; then
+    fail "corepack não encontrado. Instale Node.js 22+ com Corepack habilitado."
+  fi
+}
+
+validate_lockfile() {
+  if [[ ! -f "${REPO_DIR}/pnpm-lock.yaml" ]]; then
+    fail "pnpm-lock.yaml não encontrado em ${REPO_DIR}. Rode 'corepack pnpm install' no repositório e versione o lockfile antes do deploy."
+  fi
+}
+
+read_expected_pnpm_version() {
+  local package_manager
+  package_manager="$(
+    node -p "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); pkg.packageManager ?? ''" \
+      "${APP_DIR}/package.json"
+  )"
+
+  if [[ ! "${package_manager}" =~ ^pnpm@.+$ ]]; then
+    fail "package.json precisa definir packageManager no formato pnpm@<versão>."
+  fi
+
+  printf '%s\n' "${package_manager#pnpm@}"
+}
+
+prepare_pnpm() {
+  local expected_pnpm_version
+  expected_pnpm_version="$(read_expected_pnpm_version)"
+
+  corepack enable
+  corepack prepare "pnpm@${expected_pnpm_version}" --activate
+
+  local installed_pnpm_version
+  if command -v pnpm >/dev/null 2>&1; then
+    installed_pnpm_version="$(pnpm --version)"
+  else
+    installed_pnpm_version="$(corepack pnpm --version)"
+  fi
+
+  if [[ "${installed_pnpm_version}" != "${expected_pnpm_version}"* ]]; then
+    fail "Versão inesperada do pnpm. Esperado: ${expected_pnpm_version}. Atual: ${installed_pnpm_version}."
+  fi
+}
+
+run_pnpm() {
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm "$@"
+    return
+  fi
+
+  corepack pnpm "$@"
 }
 
 ensure_service_account() {
@@ -79,20 +141,35 @@ sync_application_code() {
     -cf - . | tar -C "${APP_DIR}" -xf -
 }
 
-install_dependencies_and_build() {
-  cd "${APP_DIR}"
-  corepack enable
-  corepack prepare pnpm@10.6.4 --activate
-  npm ci
-  npm run build
-  node dist/src/index.js install-browsers --with-deps
+ensure_runtime_directories() {
+  mkdir -p \
+    "${APP_DIR}" \
+    "${ENV_DIR}" \
+    "${STATE_DIR}" \
+    "${STATE_DIR}/debug" \
+    "${CACHE_DIR}" \
+    "${CACHE_DIR}/tmp"
 }
 
-ensure_runtime_directories() {
-  mkdir -p "${ENV_DIR}" "${STATE_DIR}" "${STATE_DIR}/debug" "${CACHE_DIR}"
+apply_runtime_permissions() {
   chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}" "${STATE_DIR}" "${CACHE_DIR}"
-  chmod 0750 "${STATE_DIR}" "${STATE_DIR}/debug" "${CACHE_DIR}"
+  chown root:"${SERVICE_GROUP}" "${ENV_DIR}" "${ENV_FILE}"
+  chmod 0750 "${ENV_DIR}" "${STATE_DIR}" "${STATE_DIR}/debug" "${CACHE_DIR}" "${CACHE_DIR}/tmp"
+  chmod 0640 "${ENV_FILE}"
   chmod 0755 "${APP_DIR}"
+}
+
+install_dependencies_and_build() {
+  cd "${APP_DIR}"
+
+  if [[ ! -f "pnpm-lock.yaml" ]]; then
+    fail "pnpm-lock.yaml não foi copiado para ${APP_DIR}. O checkout precisa estar consistente antes do deploy."
+  fi
+
+  prepare_pnpm
+  run_pnpm install --frozen-lockfile
+  run_pnpm build
+  APP_ENV_FILE="${ENV_FILE}" NODE_ENV=production run_pnpm app install-browsers --with-deps
 }
 
 install_env_file() {
@@ -102,7 +179,6 @@ install_env_file() {
   fi
 
   install -m 0640 "${APP_DIR}/deploy/ubuntu/real-estate-watcher.env.example" "${ENV_FILE}"
-  chown root:"${SERVICE_GROUP}" "${ENV_FILE}"
   echo "Arquivo de ambiente criado em ${ENV_FILE}. Revise TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID."
 }
 
@@ -118,7 +194,7 @@ Instalação concluída.
 Próximos passos:
 1. Revisar ${ENV_FILE}
 2. Executar bootstrap inicial:
-   sudo -u ${SERVICE_USER} -- bash -lc 'cd ${APP_DIR} && node dist/src/index.js bootstrap'
+   sudo -u ${SERVICE_USER} -- bash -lc 'cd ${APP_DIR} && pnpm app bootstrap'
 3. Validar o deploy:
    sudo ${APP_DIR}/deploy/ubuntu/post-deploy-check.sh
 4. Iniciar o serviço:
@@ -132,11 +208,14 @@ main() {
   require_root
   validate_ubuntu_release
   validate_node
+  validate_corepack
+  validate_lockfile
   ensure_service_account
   sync_application_code
-  install_dependencies_and_build
   ensure_runtime_directories
   install_env_file
+  install_dependencies_and_build
+  apply_runtime_permissions
   install_systemd_unit
   print_next_steps
 }

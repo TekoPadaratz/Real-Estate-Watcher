@@ -38,15 +38,25 @@ describe("deploy assets", () => {
   });
 
   it("entrega scripts bash sem resíduos de Windows", async () => {
-    for (const relativePath of [
-      "deploy/ubuntu/install-ubuntu-24.04.sh",
-      "deploy/ubuntu/post-deploy-check.sh"
-    ]) {
-      const script = await readProjectFile(relativePath);
+    const installScript = await readProjectFile("deploy/ubuntu/install-ubuntu-24.04.sh");
+    const postDeployScript = await readProjectFile("deploy/ubuntu/post-deploy-check.sh");
 
+    for (const script of [installScript, postDeployScript]) {
       expect(script.startsWith("#!/usr/bin/env bash")).toBe(true);
       expect(script).toContain("set -euo pipefail");
       expect(script).not.toMatch(/Copy-Item|powershell|PowerShell|cmd \/c|C:\\\\/);
+      expect(script).not.toMatch(/(^|[^\w-])npm ci\b/);
+      expect(script).not.toMatch(/(^|[^\w-])npm install\b/);
+      expect(script).not.toMatch(/(^|[^\w-])npm run\b/);
     }
+
+    expect(installScript).toContain("pnpm install --frozen-lockfile");
+    expect(installScript).toContain("pnpm build");
+    expect(installScript).toContain("pnpm app install-browsers --with-deps");
+    expect(installScript).toContain("pnpm-lock.yaml");
+    expect(postDeployScript).toContain('run_app_command "healthcheck"');
+    expect(postDeployScript).toContain('run_app_command "source-check"');
+    expect(postDeployScript).toContain('PNPM_RUNNER=("pnpm")');
+    expect(postDeployScript).toContain('PNPM_RUNNER=("corepack" "pnpm")');
   });
 });
